@@ -497,9 +497,6 @@ function process(v, vars){
     if (!isNaN(parseFloat(v))){
         return parseFloat(v);
     }
-    if (vars[v] !== undefined){
-        return vars[v];
-    }
     return v;
 }
 
