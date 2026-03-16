@@ -506,9 +506,11 @@ function FScript(lines){
         }else if (command === "subtract"){
             vars[split[3]] = process(split[1], vars) - process(split[2], vars);
         }else if (command === "multiply"){
-            vars[split[3]] = process(split[1]) * process(split[2]);
+            vars[split[3]] = process(split[1], vars) * process(split[2], vars);
         }else if (command === "divide"){
-            vars[split[3]] = process(split[1]) / process(split[2]);
+            vars[split[3]] = process(split[1], vars) / process(split[2], vars);
+        }else if (command === "endif"){
+            
         }else {
             runCommand(command, split);
         }
