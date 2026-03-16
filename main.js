@@ -153,7 +153,6 @@ if (filemode){
             type(" - endif");
             type(" - loop [count]");
             type(" - endloop");
-            type(" - wait [ms]");
             type(" - input [varName]");
             prev = 0;
         }else{
