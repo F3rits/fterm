@@ -161,15 +161,19 @@ function runCommand(command, split){
             type("FScript is a simple programming language for FTerm.");
             type("Commands:");
             type(" - var [name] [value] (variables must be called using the $ prefix)");
+            type(" - set [var]")
             type(" - print [text/var]");
-            type(" - add [var1] [var2] [resultVar]");
             type(" - if [var1] [operator] [var2] (>, <, ==)");
             type(" - endif");
             type(" - loop [count]");
             type(" - endloop");
-            type(" - input [name]");
+            type(" - input [var]");
             type(" - function [name]")
             type(" - endfunction")
+            type(" - add [var1] [var2] [resultVar]");
+            type(" - subtract [var1] [var2] [reusltVar]")
+            type(" - multiply [var1] [var2] [reusltVar]")
+            type(" - divide [var1] [var2] [reusltVar]")
             prev = 0;
         }else{
             locked = true;
@@ -447,9 +451,7 @@ function FScript(lines){
             text = text.trim();
             textarea.innerText += "\n" + text;
         } else if (command === "add"){
-            vars[split[3]] =
-                process(split[1], vars) +
-                process(split[2], vars);
+            vars[split[3]] = process(split[1], vars) +  process(split[2], vars);
         } else if (command === "if"){
 
             let left = process(split[1], vars);
@@ -499,6 +501,14 @@ function FScript(lines){
             }
         }else if (functions[command]){
             FScript(functions[command]);
+        }else if (command === "set"){
+            vars[split[1]] = process(split[2], vars);
+        }else if (command === "subtract"){
+            vars[split[3]] = process(split[1], vars) - process(split[2], vars);
+        }else if (command === "multiply"){
+            vars[split[3]] = process(split[1]) * process(split[2]);
+        }else if (command === "divide"){
+            vars[split[3]] = process(split[1]) / process(split[2]);
         }else {
             runCommand(command, split);
         }
