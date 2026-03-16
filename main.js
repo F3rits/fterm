@@ -15,6 +15,12 @@ let inputVal = "";
 let inputEnd = null;
 let vars = {};
 
+const saved = localStorage.getItem("files");
+
+if (saved){
+    files = JSON.parse(saved);
+}
+
 input.innerText = "> ";
 
 window.addEventListener("keydown", (e) => {
@@ -105,6 +111,7 @@ if (filemode){
 
     if (msg === "save"){
         files[currentFile] = file;
+        localStorage.setItem("files", JSON.stringify(files));
         filemode = false;
         fileIndex = -1;
         textarea.innerText = "";
@@ -294,6 +301,7 @@ if (filemode){
             return;
         }
         files[name] = [];
+        localStorage.setItem("files", JSON.stringify(files));
         say("Created " + name + "! Use 'nano " + name + "' to edit the file.");
         }
         else if (command === "nano"){
@@ -319,6 +327,7 @@ if (filemode){
         const name = split[1];
         if (files[name]){
             delete files[name];
+            localStorage.setItem("files", JSON.stringify(files));
             say("File deleted: " + name);
         } else {
             say("File not found: " + name);
