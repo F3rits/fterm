@@ -1,0 +1,35 @@
+body{
+  font-family: "VT323", monospace;
+  font-weight: 400;
+  font-style: normal;
+  /*/background-image: url('Mac and cheese .webp');/*/
+  background-size: cover;
+  color: white;
+  white-space: pre;
+}
+
+#main {
+    background-color: rgb(16, 16, 16);
+    display: flex;
+    width: 90vw;
+    height: 80vh;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    border: 10px solid rgb(16, 16, 16);
+    flex-direction: column;
+}
+
+#input {
+    bottom:0;
+    position: absolute;
+    width: 100%;
+    background-color: rgb(8, 8, 8);
+}
+
+#textarea {
+    display: flex;
+    flex-direction: column-reverse;
+    width: 100%;
+    overflow: auto;
+}

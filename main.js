@@ -1,0 +1,408 @@
+let msg = "";
+let history = [];
+let historyIndex = -1;
+const input = document.getElementById("input");
+const textarea = document.getElementById("textarea");
+let locked = true;
+let prev = 0;
+let files = {};
+let currentFile = "";
+let file = [];
+let fileIndex = -1;
+let filemode = false;
+
+const commands = {
+    help: help,
+    clear: clear,
+    add: add,
+    subtract: subtract,
+    multiply: multiply,
+    divide: divide,
+    avg: avg,
+    median: median,
+    history: historyFunction,
+    random: random,
+    touch: touch,
+    nano: nano,
+    rm: rm,
+    ls: ls,
+    cat: cat
+};
+
+input.innerText = "> ";
+
+window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp") {
+        if (!filemode){
+        if (history.length === 0) {
+            return;
+        }
+        if (historyIndex < history.length - 1) {
+        historyIndex++;
+        }
+        msg = history[history.length - 1 - historyIndex];
+    } else {
+        if (file.length === 0) {
+            return;
+        }
+
+        if (fileIndex > 0){
+            fileIndex--;
+        }
+
+        msg = file[fileIndex];
+        writeFile();
+    }
+        input.innerText = "> " + msg;
+        return;
+}
+    if (e.key === "ArrowDown") {
+      if (!filemode){
+        if (history.length === 0) {
+            return
+        };
+        if (historyIndex > 0) {
+            historyIndex--;
+            msg = history[history.length - 1 - historyIndex];
+        }else {
+            if (file.length === 0){ 
+                return;
+            }
+            if (fileIndex < file.length - 1){
+            fileIndex++;
+    }
+    msg = file[fileIndex] || "";
+    writeFile();
+}
+    } else {
+        if (file.length === 0) {
+            return;
+        }
+
+        if (fileIndex < file.length - 1){
+            fileIndex++;
+            msg = file[fileIndex];
+        }
+    }
+        input.innerText = "> " + msg;
+        return;
+    }
+    if (e.key === "Enter" && !locked) {
+        send();
+    }
+
+    if (e.key === "Backspace") {
+        msg = msg.slice(0, -1);
+    }
+
+    if (e.key.length === 1){
+    msg += e.key;
+    }
+    input.innerText = "> " + msg;
+});
+
+function send(){
+
+if (filemode){
+
+    if (msg === "save"){
+        files[currentFile] = file;
+        filemode = false;
+        fileIndex = -1;
+        textarea.innerText = "";
+        say(currentFile + " saved.");
+        currentFile = "";
+        msg = "";
+        return;
+    }
+
+    if (fileIndex === -1){
+        fileIndex = 0;
+    }
+
+    file[fileIndex] = msg;
+
+    fileIndex++;
+
+    if (fileIndex >= file.length){
+        file.push("");
+    }
+
+    writeFile();
+
+    msg = file[fileIndex] || "";
+    return;
+}
+    historyIndex = -1;
+
+    textarea.innerText += "\n" + "> " + msg;
+    input.innerText = "> ";
+
+    history.push(msg);
+
+    const split = msg.split(" ");
+    const command = split[0];
+
+    if (commands[command]){
+        commands[command](split);
+    } else {
+        say("Unknown command: " + command);
+    }
+
+    msg = "";
+}
+
+
+function getNumbers(split) {
+    let numbers = [];
+    for (let i = 1; i < split.length; i++) {
+        numbers.push(parseFloat(split[i]));
+    }
+    return numbers;
+}
+
+function say(msg){
+    locked = true;
+    if (textarea.innerText.length > 0){
+        textarea.innerText += "\n";
+    }
+    for (let i = 0; i < msg.length; i++){
+        setTimeout(() => {
+            textarea.innerText += msg[i];
+            if (i === msg.length - 1){
+                locked = false;
+            }
+        }, i * 30);
+    }
+}
+
+function type (msg) {
+    console.log(prev);
+        setTimeout(() => say(msg), prev);
+        prev = prev + (30 * msg.length + 90);
+}
+
+function help(){
+    locked = true;
+    type("Available commands:");
+    type(" - clear");
+    type(" - history");
+    type(" - add [numbers]");
+    type(" - subtract [num1] [num2]");
+    type(" - multiply [numbers]");
+    type(" - divide [num1] [num2]");
+    type(" - avg [numbers]");
+    type(" - median [numbers]");
+    type(" - random [min] [max]");
+    type(" - touch [filename]");
+    type(" - nano [filename]");
+    type(" - rm [filename]");
+    type(" - ls");
+    type(" - cat [filename]");
+    prev = 0;
+}
+
+function clear(){
+    textarea.innerText = "";
+}
+
+function add(split){
+    let numbers = getNumbers(split);
+
+    let sum = 0;
+    for (let i = 0; i < numbers.length; i++){
+        sum += numbers[i];
+    }
+
+    if (isNaN(sum)){
+        say("Invalid numbers provided");
+    } else {
+        say("Result: " + sum);
+    }
+}
+
+function subtract(split){
+    let num1 = parseFloat(split[1]);
+    let num2 = parseFloat(split[2]);
+
+    if (!isNaN(num1) && !isNaN(num2)){
+        say("Result: " + (num1 - num2));
+    } else {
+        say("Invalid numbers provided");
+    }
+}
+
+function multiply(split){
+    let numbers = getNumbers(split);
+
+    let product = 1;
+
+    for (let i = 0; i < numbers.length; i++){
+        product *= numbers[i];
+    }
+
+    if (isNaN(product)){
+        say("Invalid numbers provided");
+    } else {
+        say("Result: " + product);
+    }
+}
+
+function divide(split){
+    let num1 = parseFloat(split[1]);
+    let num2 = parseFloat(split[2]);
+
+    if (!isNaN(num1) && !isNaN(num2) && num2 !== 0){
+        say("Result: " + (num1 / num2));
+    } else {
+        say("Invalid numbers provided");
+    }
+}
+
+function avg(split){
+    let numbers = getNumbers(split);
+
+    let sum = 0;
+
+    for (let i = 0; i < numbers.length; i++){
+        sum += numbers[i];
+    }
+
+    let average = sum / numbers.length;
+
+    if (isNaN(average)){
+        say("Invalid numbers provided");
+    } else {
+        say("Result: " + average);
+    }
+}
+
+function median(split){
+    let numbers = getNumbers(split);
+
+    for (let j = 0; j < numbers.length; j++){
+        for (let i = 0; i < numbers.length - 1; i++){
+            if (numbers[i] > numbers[i + 1]){
+                let temp = numbers[i];
+                numbers[i] = numbers[i + 1];
+                numbers[i + 1] = temp;
+            }
+        }
+    }
+    let median;
+
+    if (numbers.length % 2 === 0){
+        median = (numbers[numbers.length/2 - 1] + numbers[numbers.length/2]) / 2;
+    } else {
+        median = numbers[Math.floor(numbers.length/2)];
+    }
+     if (isNaN(median)){
+        say("Invalid numbers provided");
+    } else {
+        say("Result: "+median);
+    }
+}
+
+function historyFunction(){
+    say(history.join(", "));
+}
+
+function random(split){
+    let min = parseFloat(split[1]);
+    let max = parseFloat(split[2]);
+
+    if (!isNaN(min) && !isNaN(max)){
+        say("Result: " + (Math.floor(Math.random() * (max - min + 1)) + min));
+    } else {
+        say("Invalid numbers provided");
+    }
+}
+
+function touch(split){
+    const name = split[1];
+    if (!name){
+        say("Usage: touch [filename]");
+        return;
+    }
+    if (files[name]){
+        say("File already exists: " + name);
+        return;
+    }
+    files[name] = [];
+    say("Created " + name + "! Use 'nano " + name + "' to edit the file.");
+}
+
+function nano(split){
+    const name = split[1];
+    if (!files[name]){
+        say("File not found: " + name);
+        return;
+    }
+
+    currentFile = name;
+    file = files[name];
+    filemode = true;
+    fileIndex = file.length - 1;
+    textarea.innerText = "Editing " + name + ". Type 'save' to save and exit.";
+
+    for (let i = 0; i < file.length; i++){
+        textarea.innerText += "\n" + file[i];
+    }
+
+    locked = false;
+}
+
+function rm(split){
+    const name = split[1];
+    if (files[name]){
+        delete files[name];
+        say("File deleted: " + name);
+    } else {
+        say("File not found: " + name);
+    }
+}
+
+function ls(){
+    let names = [];
+
+    for (let name in files){
+        names.push(name);
+    }
+    if (names.length === 0){
+        say("No files.");
+    } else {
+        say(names.join(", "));
+    }
+}
+
+function cat(split){
+    const name = split[1];
+    if (!files[name]){
+        say("File not found: " + name);
+        return;
+    }
+    const content = files[name];
+    if (content.length === 0){
+        say("(empty file)");
+        return;
+    }
+    say(content.join("\n"));
+}
+
+function writeFile(){
+    textarea.innerText = "";
+    for (let i = 0; i < file.length; i++){
+        if (i === fileIndex){
+            textarea.innerText += (i === 0 ? "" : "\n") + "> " + file[i];
+        } else {
+            textarea.innerText += (i === 0 ? "" : "\n") + "  " + file[i];
+        }
+    }
+
+}
+
+type ("Hello,");
+type ("Welcome to Ferret Terminal (FTerm)!");
+type ("Type 'help' for a list of commands.");
+
+prev = 0;
