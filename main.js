@@ -10,27 +10,10 @@ let currentFile = "";
 let file = [];
 let fileIndex = -1;
 let filemode = false;
-
-const commands = {
-    help: help,
-    clear: clear,
-    add: add,
-    subtract: subtract,
-    multiply: multiply,
-    divide: divide,
-    avg: avg,
-    median: median,
-    history: historyFunction,
-    random: random,
-    touch: touch,
-    nano: nano,
-    rm: rm,
-    ls: ls,
-    cat: cat,
-    say: sayFunction,
-    type: typeFunction,
-    run: run
-};
+let inputMode = false;
+let inputVal = "";
+let inputEnd = null;
+let vars = {};
 
 input.innerText = "> ";
 
@@ -106,6 +89,18 @@ window.addEventListener("keydown", (e) => {
 
 function send(){
 
+if (inputMode){
+    vars[inputVal] = msg;
+    inputMode = false;
+
+    if (inputEnd){
+        inputEnd();
+    }
+
+    msg = "";
+    return;
+}
+
 if (filemode){
 
     if (msg === "save"){
@@ -146,15 +141,237 @@ if (filemode){
     const split = msg.split(" ");
     const command = split[0];
 
-    if (commands[command]){
-        commands[command](split);
-    } else {
+    if (command === "help"){
+        if (split[1] === "fscript"){
+            locked = true;
+            type("FScript is a simple programming language for FTerm.");
+            type("Commands:");
+            type(" - var [name] [value]");
+            type(" - print [text/var]");
+            type(" - add [var1] [var2] [resultVar]");
+            type(" - if [var1] [operator] [var2] (>, <, ==)");
+            type(" - endif");
+            type(" - loop [count]");
+            type(" - endloop");
+            type(" - wait [ms]");
+            type(" - input [varName]");
+            prev = 0;
+        }else{
+            locked = true;
+            type("Available commands:");
+            type(" - clear");
+            type(" - history");
+            type(" - add [numbers]");
+            type(" - subtract [num1] [num2]");
+            type(" - multiply [numbers]");
+            type(" - divide [num1] [num2]");
+            type(" - avg [numbers]");
+            type(" - median [numbers]");
+            type(" - touch [filename]");
+            type(" - nano [filename]");
+            type(" - rm [filename]");
+            type(" - ls");
+            type(" - cat [filename]");
+            type(" - say [message]");
+            type(" - type [message]");
+            type(" - run [filename]");
+            type("For help on FScript run 'help fscript'.");
+            prev = 0;
+        }
+    }
+    else if (command === "clear"){
+        textarea.innerText = "";
+    }
+    else if (command === "add"){
+        let numbers = [];
+        for (let i = 1; i < split.length; i++) {
+            numbers.push(parseFloat(split[i]));
+        }
+
+        let sum = 0;
+        for (let i = 0; i < numbers.length; i++){
+            sum += numbers[i];
+        }
+        if (!isNaN(sum)){
+            say("Result: " + sum);
+        } else {
+            say("Invalid numbers provided");
+        }
+    }
+    else if (command === "subtract"){
+        let num1 = parseFloat(split[1]);
+        let num2 = parseFloat(split[2]);
+
+        if (!isNaN(num1) && !isNaN(num2)){
+            say("Result: " + (num1 - num2));
+        } else {
+            say("Invalid numbers provided");
+        }
+    }
+    else if (command === "multiply"){
+        let numbers = [];
+        for (let i = 1; i < split.length; i++) {
+            numbers.push(parseFloat(split[i]));
+        }
+
+        let product = 1;
+
+        for (let i = 0; i < numbers.length; i++){
+            product *= numbers[i];
+        }
+
+        if (isNaN(product)){
+            say("Invalid numbers provided");
+        } else {
+             say("Result: " + product);
+    }
+    }
+    else if (command === "divide"){
+        let num1 = parseFloat(split[1]);
+        let num2 = parseFloat(split[2]);
+
+        if (!isNaN(num1) && !isNaN(num2) && num2 !== 0){
+            say("Result: " + (num1 / num2));
+        } else {
+            say("Invalid numbers provided");
+        }
+    }
+    else if (command === "avg"){
+        let numbers = [];
+        for (let i = 1; i < split.length; i++) {
+            numbers.push(parseFloat(split[i]));
+        }
+
+        let sum = 0;
+
+        for (let i = 0; i < numbers.length; i++){
+            sum += numbers[i];
+        }
+
+        let average = sum / numbers.length;
+
+        if (isNaN(average)){
+            say("Invalid numbers provided");
+        } else {
+            say("Result: " + average);
+        }
+    }else if (command === "median"){
+        let numbers = [];
+        for (let i = 1; i < split.length; i++) {
+            numbers.push(parseFloat(split[i]));
+        }
+
+        for (let j = 0; j < numbers.length; j++){
+            for (let i = 0; i < numbers.length - 1; i++){
+                if (numbers[i] > numbers[i + 1]){
+                    let temp = numbers[i];
+                    numbers[i] = numbers[i + 1];
+                    numbers[i + 1] = temp;
+                }
+            }
+        }
+        let median;
+
+        if (numbers.length % 2 === 0){
+            median = (numbers[numbers.length/2 - 1] + numbers[numbers.length/2]) / 2;
+        } else {
+            median = numbers[Math.floor(numbers.length/2)];
+        }
+        if (isNaN(median)){
+            say("Invalid numbers provided");
+        } else {
+            say("Result: "+median);
+        }
+        } else if (command === "history"){
+            say(history.join(", "));
+        } else if (command === "touch"){
+        const name = split[1];
+        if (!name){
+            say("Usage: touch [filename]");
+            return;
+        }
+        if (files[name]){
+            say("File already exists: " + name);
+            return;
+        }
+        files[name] = [];
+        say("Created " + name + "! Use 'nano " + name + "' to edit the file.");
+        }
+        else if (command === "nano"){
+                const name = split[1];
+        if (!files[name]){
+            say("File not found: " + name);
+            return;
+        }
+
+        currentFile = name;
+        file = files[name];
+        filemode = true;
+        fileIndex = file.length - 1;
+        textarea.innerText = "Editing " + name + ". Type 'save' to save and exit.";
+
+        for (let i = 0; i < file.length; i++){
+            textarea.innerText += "\n" + file[i];
+        }
+
+        locked = false;
+    }
+    else if (command === "rm"){
+        const name = split[1];
+        if (files[name]){
+            delete files[name];
+            say("File deleted: " + name);
+        } else {
+            say("File not found: " + name);
+        }
+    }
+    else if (command === "ls"){
+        let names = [];
+
+        for (let name in files){
+            names.push(name);
+        }
+        if (names.length === 0){
+            say("No files.");
+        } else {
+            say(names.join(", "));
+        }
+    }
+    else if (command === "cat"){
+        const name = split[1];
+        if (!files[name]){
+            say("File not found: " + name);
+            return;
+        }
+        const content = files[name];
+        if (content.length === 0){
+            say("(empty file)");
+            return;
+        }
+        say(content.join("\n"));
+    }
+    else if (command === "print"){
+        textarea.innerText += "\n" + split.slice(1).join(" ");
+    }
+    else if (command === "type"){
+        type(split.slice(1).join(" "));
+    }
+    else if (command === "run"){
+        const name = split[1];
+
+        if (!files[name]){
+            say("File not found: " + name);
+            return;
+        }
+
+        FScript(files[name]);
+    }
+    else {
         say("Unknown command: " + command);
     }
 
     msg = "";
 }
-
 
 function say(msg){
     locked = true;
@@ -177,253 +394,7 @@ function type (msg) {
         prev = prev + (30 * msg.length + 90);
 }
 
-function help(){
-    locked = true;
-    type("Available commands:");
-    type(" - clear");
-    type(" - history");
-    type(" - add [numbers]");
-    type(" - subtract [num1] [num2]");
-    type(" - multiply [numbers]");
-    type(" - divide [num1] [num2]");
-    type(" - avg [numbers]");
-    type(" - median [numbers]");
-    type(" - random [min] [max]");
-    type(" - touch [filename]");
-    type(" - nano [filename]");
-    type(" - rm [filename]");
-    type(" - ls");
-    type(" - cat [filename]");
-    type(" - say [message]");
-    type(" - type [message]");
-    type(" - run [filename]");
-    prev = 0;
-}
 
-function clear(){
-    textarea.innerText = "";
-}
-
-function add(split){
-    let numbers = [];
-    for (let i = 1; i < split.length; i++) {
-        numbers.push(parseFloat(split[i]));
-    }
-
-    let sum = 0;
-    for (let i = 0; i < numbers.length; i++){
-        sum += numbers[i];
-    }
-    if (!isNaN(sum)){
-        say("Result: " + sum);
-    } else {
-        say("Invalid numbers provided");
-    }
-}
-
-function subtract(split){
-    let num1 = parseFloat(split[1]);
-    let num2 = parseFloat(split[2]);
-
-    if (!isNaN(num1) && !isNaN(num2)){
-        say("Result: " + (num1 - num2));
-    } else {
-        say("Invalid numbers provided");
-    }
-}
-
-function multiply(split){
-    let numbers = [];
-    for (let i = 1; i < split.length; i++) {
-        numbers.push(parseFloat(split[i]));
-    }
-
-    let product = 1;
-
-    for (let i = 0; i < numbers.length; i++){
-        product *= numbers[i];
-    }
-
-    if (isNaN(product)){
-        say("Invalid numbers provided");
-    } else {
-        say("Result: " + product);
-    }
-}
-
-function divide(split){
-    let num1 = parseFloat(split[1]);
-    let num2 = parseFloat(split[2]);
-
-    if (!isNaN(num1) && !isNaN(num2) && num2 !== 0){
-        say("Result: " + (num1 / num2));
-    } else {
-        say("Invalid numbers provided");
-    }
-}
-
-function avg(split){
-    let numbers = [];
-    for (let i = 1; i < split.length; i++) {
-        numbers.push(parseFloat(split[i]));
-    }
-
-    let sum = 0;
-
-    for (let i = 0; i < numbers.length; i++){
-        sum += numbers[i];
-    }
-
-    let average = sum / numbers.length;
-
-    if (isNaN(average)){
-        say("Invalid numbers provided");
-    } else {
-        say("Result: " + average);
-    }
-}
-
-function median(split){
-    let numbers = [];
-    for (let i = 1; i < split.length; i++) {
-        numbers.push(parseFloat(split[i]));
-    }
-
-    for (let j = 0; j < numbers.length; j++){
-        for (let i = 0; i < numbers.length - 1; i++){
-            if (numbers[i] > numbers[i + 1]){
-                let temp = numbers[i];
-                numbers[i] = numbers[i + 1];
-                numbers[i + 1] = temp;
-            }
-        }
-    }
-    let median;
-
-    if (numbers.length % 2 === 0){
-        median = (numbers[numbers.length/2 - 1] + numbers[numbers.length/2]) / 2;
-    } else {
-        median = numbers[Math.floor(numbers.length/2)];
-    }
-     if (isNaN(median)){
-        say("Invalid numbers provided");
-    } else {
-        say("Result: "+median);
-    }
-}
-
-function historyFunction(){
-    say(history.join(", "));
-}
-
-function random(split){
-    let min = parseFloat(split[1]);
-    let max = parseFloat(split[2]);
-
-    if (!isNaN(min) && !isNaN(max)){
-        say("Result: " + (Math.floor(Math.random() * (max - min + 1)) + min));
-    } else {
-        say("Invalid numbers provided");
-    }
-}
-
-function touch(split){
-    const name = split[1];
-    if (!name){
-        say("Usage: touch [filename]");
-        return;
-    }
-    if (files[name]){
-        say("File already exists: " + name);
-        return;
-    }
-    files[name] = [];
-    say("Created " + name + "! Use 'nano " + name + "' to edit the file.");
-}
-
-function nano(split){
-    const name = split[1];
-    if (!files[name]){
-        say("File not found: " + name);
-        return;
-    }
-
-    currentFile = name;
-    file = files[name];
-    filemode = true;
-    fileIndex = file.length - 1;
-    textarea.innerText = "Editing " + name + ". Type 'save' to save and exit.";
-
-    for (let i = 0; i < file.length; i++){
-        textarea.innerText += "\n" + file[i];
-    }
-
-    locked = false;
-}
-
-function rm(split){
-    const name = split[1];
-    if (files[name]){
-        delete files[name];
-        say("File deleted: " + name);
-    } else {
-        say("File not found: " + name);
-    }
-}
-
-function ls(){
-    let names = [];
-
-    for (let name in files){
-        names.push(name);
-    }
-    if (names.length === 0){
-        say("No files.");
-    } else {
-        say(names.join(", "));
-    }
-}
-
-function cat(split){
-    const name = split[1];
-    if (!files[name]){
-        say("File not found: " + name);
-        return;
-    }
-    const content = files[name];
-    if (content.length === 0){
-        say("(empty file)");
-        return;
-    }
-    say(content.join("\n"));
-}
-
-function sayFunction(split){
-    textarea.innerText += "\n" + split.slice(1).join(" ");
-}
-
-function typeFunction(split){
-    type(split.slice(1).join(""));
-}
-
-function run(split){
-    const name = split[1];
-    if (!files[name]){
-        say("File not found: " + name);
-        return;
-    }
-    for (let i = 0; i < files[name].length; i++){
-        const line = files[name][i];
-        const command = line.split(" ")[0];
-        if (commands[command]){
-            commands[command](line.split(" "));
-        } else if(line === ""){
-            return;
-        } else {
-            say("Unknown command: " + command);
-        }
-    }
-}
 
 function writeFile(){
     textarea.innerText = "";
@@ -435,6 +406,93 @@ function writeFile(){
         }
     }
 
+}
+
+
+function FScript(lines){
+    let i = 0;
+
+    while (i < lines.length){
+        let line = lines[i].trim();
+        if (line === ""){
+            i++;
+            continue;
+        }
+
+        let split = line.split(" ");
+        let command = split[0];
+
+        if (command === "var"){
+            vars[split[1]] = process(split[2], vars);
+        } else if (command === "print"){
+            let text = "";
+            for (let i = 1; i < split.length; i++) {
+                text += process(split[i], vars) + " ";
+            }
+            text = text.trim();
+            textarea.innerText += "\n" + text;
+        } else if (command === "add"){
+            vars[split[3]] =
+                process(split[1], vars) +
+                process(split[2], vars);
+        } else if (command === "if"){
+
+            let left = process(split[1], vars);
+            let op = split[2];
+            let right = process(split[3], vars);
+
+            let condition = false;
+
+            if (op === ">") condition = left > right;
+            if (op === "<") condition = left < right;
+            if (op === "==") condition = left == right;
+
+            if (!condition){
+                while (lines[i] !== "endif"){
+                    i++;
+                }
+            }
+        } else if (command === "loop"){
+            let count = process(split[1], vars);
+            let start = i + 1;
+
+            while (lines[i] !== "endloop"){
+                i++;
+            }
+
+            let end = i;
+
+            for (let j = 0; j < count; j++){
+                FScript(lines.slice(start, end));
+            }
+        }else if (command === "input"){
+            let name = split[1];
+            inputMode = true;
+            inputVal = name;
+            inputEnd = () => {
+            FScript(lines.slice(i + 1));
+    };
+
+    return;
+}
+     i++;
+    }
+}
+
+function process(v, vars){
+    if (typeof v === "string" && v.startsWith("$")){
+        let name = v.slice(1);
+        if (vars[name] !== undefined){
+            return vars[name];
+        }
+    }
+    if (!isNaN(parseFloat(v))){
+        return parseFloat(v);
+    }
+    if (vars[v] !== undefined){
+        return vars[v];
+    }
+    return v;
 }
 
 type ("Hello,");
