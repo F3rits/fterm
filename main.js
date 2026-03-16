@@ -26,7 +26,10 @@ const commands = {
     nano: nano,
     rm: rm,
     ls: ls,
-    cat: cat
+    cat: cat,
+    say: sayFunction,
+    type: typeFunction,
+    run: run
 };
 
 input.innerText = "> ";
@@ -153,14 +156,6 @@ if (filemode){
 }
 
 
-function getNumbers(split) {
-    let numbers = [];
-    for (let i = 1; i < split.length; i++) {
-        numbers.push(parseFloat(split[i]));
-    }
-    return numbers;
-}
-
 function say(msg){
     locked = true;
     if (textarea.innerText.length > 0){
@@ -199,6 +194,9 @@ function help(){
     type(" - rm [filename]");
     type(" - ls");
     type(" - cat [filename]");
+    type(" - say [message]");
+    type(" - type [message]");
+    type(" - run [filename]");
     prev = 0;
 }
 
@@ -207,17 +205,19 @@ function clear(){
 }
 
 function add(split){
-    let numbers = getNumbers(split);
+    let numbers = [];
+    for (let i = 1; i < split.length; i++) {
+        numbers.push(parseFloat(split[i]));
+    }
 
     let sum = 0;
     for (let i = 0; i < numbers.length; i++){
         sum += numbers[i];
     }
-
-    if (isNaN(sum)){
-        say("Invalid numbers provided");
-    } else {
+    if (!isNaN(sum)){
         say("Result: " + sum);
+    } else {
+        say("Invalid numbers provided");
     }
 }
 
@@ -233,7 +233,10 @@ function subtract(split){
 }
 
 function multiply(split){
-    let numbers = getNumbers(split);
+    let numbers = [];
+    for (let i = 1; i < split.length; i++) {
+        numbers.push(parseFloat(split[i]));
+    }
 
     let product = 1;
 
@@ -260,7 +263,10 @@ function divide(split){
 }
 
 function avg(split){
-    let numbers = getNumbers(split);
+    let numbers = [];
+    for (let i = 1; i < split.length; i++) {
+        numbers.push(parseFloat(split[i]));
+    }
 
     let sum = 0;
 
@@ -278,7 +284,10 @@ function avg(split){
 }
 
 function median(split){
-    let numbers = getNumbers(split);
+    let numbers = [];
+    for (let i = 1; i < split.length; i++) {
+        numbers.push(parseFloat(split[i]));
+    }
 
     for (let j = 0; j < numbers.length; j++){
         for (let i = 0; i < numbers.length - 1; i++){
@@ -387,6 +396,33 @@ function cat(split){
         return;
     }
     say(content.join("\n"));
+}
+
+function sayFunction(split){
+    textarea.innerText += "\n" + split.slice(1).join(" ");
+}
+
+function typeFunction(split){
+    type(split.slice(1).join(""));
+}
+
+function run(split){
+    const name = split[1];
+    if (!files[name]){
+        say("File not found: " + name);
+        return;
+    }
+    for (let i = 0; i < files[name].length; i++){
+        const line = files[name][i];
+        const command = line.split(" ")[0];
+        if (commands[command]){
+            commands[command](line.split(" "));
+        } else if(line === ""){
+            return;
+        } else {
+            say("Unknown command: " + command);
+        }
+    }
 }
 
 function writeFile(){
