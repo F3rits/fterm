@@ -14,6 +14,7 @@ let inputMode = false;
 let inputVal = "";
 let inputEnd = null;
 let vars = {};
+let functions = {};
 
 const saved = localStorage.getItem("files");
 
@@ -166,7 +167,9 @@ function runCommand(command, split){
             type(" - endif");
             type(" - loop [count]");
             type(" - endloop");
-            type(" - input [varName]");
+            type(" - input [name]");
+            type(" - function [name]")
+            type(" - endfunction")
             prev = 0;
         }else{
             locked = true;
@@ -486,7 +489,17 @@ function FScript(lines){
             };
 
             return;
-        } else {
+        } else if (command === "function") {
+            let functionName = split[1];
+            functions[functionName] = [];
+            i++;
+            while (lines[i].trim() !== "endfunction") {
+                functions[functionName].push(lines[i]);
+                i++;
+            }
+        }else if (functions[command]){
+            FScript(functions[command]);
+        }else {
             runCommand(command, split);
         }
      i++;
