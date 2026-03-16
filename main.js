@@ -15,6 +15,7 @@ let inputVal = "";
 let inputEnd = null;
 let vars = {};
 let functions = {};
+let arrays = {};
 
 const saved = localStorage.getItem("files");
 
@@ -162,7 +163,12 @@ function runCommand(command, split){
             type("FScript is a simple programming language for FTerm.");
             type("Commands:");
             type(" - var [name] [value] (variables must be called using the $ prefix)");
-            type(" - set [var]")
+            type(" - array [name]");
+            type(" - endarray");
+            type(" - get [array] [index] [var]");
+            type(" - setitem [array] [index] [val]");
+            type(" - length [array] [var]")
+            type(" - set [var]");
             type(" - print [text/var]");
             type(" - if [var1] [operator] [var2] (>, <, ==)");
             type(" - endif");
@@ -170,11 +176,11 @@ function runCommand(command, split){
             type(" - endloop");
             type(" - input [var]");
             type(" - function [name]")
-            type(" - endfunction")
+            type(" - endfunction");
             type(" - add [var1] [var2] [resultVar]");
-            type(" - subtract [var1] [var2] [reusltVar]")
-            type(" - multiply [var1] [var2] [reusltVar]")
-            type(" - divide [var1] [var2] [reusltVar]")
+            type(" - subtract [var1] [var2] [reusltVar]");
+            type(" - multiply [var1] [var2] [reusltVar]");
+            type(" - divide [var1] [var2] [reusltVar]");
             prev = 0;
         }else{
             locked = true;
@@ -390,7 +396,7 @@ function runCommand(command, split){
     }
     else {
         say("Unknown command: " + command);
-    }
+    } 
 }
 
 function say(msg){
@@ -444,6 +450,45 @@ function FScript(lines){
 
         if (command === "var"){
             vars[split[1]] = process(split[2], vars);
+        }else if (command === "array"){
+            let name = split[1];
+            arrays[name] = [];
+            i++;
+            while (lines[i].trim() !== "endarray") {
+                let val = process(lines[i].trim(), vars);
+                arrays[name].push(val);
+                i++;
+            }
+        } else if (command === "push"){
+            let name = split[1];
+            let val = process(split[2], vars);
+
+            if (arrays[name]){
+                arrays[name].push(val);
+            }
+        } else if (command === "get"){
+            let name = split[1];
+            let index = process(split[2], vars);
+            let result = split[3];
+
+            if (arrays[name]){
+                vars[result] = arrays[name][index];
+            }
+        } else if (command === "setitem"){
+            let name = split[1];
+            let index = process(split[2], vars);
+            let val = process(split[3], vars);
+
+            if (arrays[name]){
+                arrays[name][index] = val;
+            }
+        } else if (command === "length"){
+            let name = split[1];
+            let result = split[2];
+
+            if (arrays[name]){
+                vars[result] = arrays[name].length;
+            }
         } else if (command === "print"){
             let text = "";
             for (let i = 1; i < split.length; i++) {
@@ -466,29 +511,34 @@ function FScript(lines){
             if (op === "==") condition = left == right;
 
             if (!condition){
-                while (lines[i] !== "endif"){
+                while (lines[i].trim() !== "endif"){
                     i++;
                 }
             }
-        } else if (command === "loop"){
+        }else if (command === "loop"){
             let count = process(split[1], vars);
-            let start = i + 1;
+            if (!vars.loops) vars.loops = [];
+            vars.loops.push({
+                start: i + 1,
+                remaining: count
+            });
+        }
+        else if (command === "endloop"){
+            let loop = vars.loops[vars.loops.length - 1];
 
-            while (lines[i] !== "endloop"){
-                i++;
+            loop.remaining--;
+
+            if (loop.remaining > 0){
+                i = loop.start - 1;
+            } else {
+                vars.loops.pop();
             }
-
-            let end = i;
-
-            for (let j = 0; j < count; j++){
-                FScript(lines.slice(start, end));
-            }
-        }else if (command === "input"){
+        } else if (command === "input"){
             let name = split[1];
             inputMode = true;
             inputVal = name;
             inputEnd = () => {
-            FScript(lines.slice(i + 1));
+                FScript(lines.slice(i + 1));
             };
 
             return;
@@ -522,6 +572,13 @@ function FScript(lines){
 function process(v, vars){
     if (typeof v === "string" && v.startsWith("$")){
         let name = v.slice(1);
+        if (name.includes("[")){
+            let arrName = name.split("[")[0];
+            let index = parseInt(name.split("[")[1].replace("]",""));
+            if (arrays[arrName]){
+                return arrays[arrName][index];
+            }
+        }
         if (vars[name] !== undefined){
             return vars[name];
         }
