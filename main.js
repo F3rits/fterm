@@ -148,6 +148,12 @@ if (filemode){
     const split = msg.split(" ");
     const command = split[0];
 
+    runCommand(command, split);
+
+    msg = "";
+}
+
+function runCommand(command, split){
     if (command === "help"){
         if (split[1] === "fscript"){
             locked = true;
@@ -377,8 +383,6 @@ if (filemode){
     else {
         say("Unknown command: " + command);
     }
-
-    msg = "";
 }
 
 function say(msg){
@@ -479,10 +483,12 @@ function FScript(lines){
             inputVal = name;
             inputEnd = () => {
             FScript(lines.slice(i + 1));
-    };
+            };
 
-    return;
-}
+            return;
+        } else {
+            runCommand(command, split);
+        }
      i++;
     }
 }
