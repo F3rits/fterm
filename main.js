@@ -101,6 +101,7 @@ if (inputMode){
     inputMode = false;
 
     if (inputEnd){
+        textarea.innerText += "\n" + "> " + msg;
         inputEnd();
     }
 
@@ -510,7 +511,7 @@ function FScript(lines){
         }else if (command === "divide"){
             vars[split[3]] = process(split[1], vars) / process(split[2], vars);
         }else if (command === "endif"){
-            
+
         }else {
             runCommand(command, split);
         }
