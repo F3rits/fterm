@@ -153,7 +153,7 @@ if (filemode){
             locked = true;
             type("FScript is a simple programming language for FTerm.");
             type("Commands:");
-            type(" - var [name] [value]");
+            type(" - var [name] [value] (variables must be called using the $ prefix)");
             type(" - print [text/var]");
             type(" - add [var1] [var2] [resultVar]");
             type(" - if [var1] [operator] [var2] (>, <, ==)");
