@@ -399,7 +399,7 @@ function say(msg){
 function type (msg) {
     console.log(prev);
         setTimeout(() => say(msg), prev);
-        prev = prev + (30 * msg.length + 90);
+        prev = prev + (30 * msg.length + 150);
 }
 
 
