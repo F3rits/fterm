@@ -6,12 +6,12 @@ const textarea = document.getElementById("textarea");
 let locked = true;
 let prev = 0;
 let files = {};
-let currentFile = "";
+let current = "";
 let file = [];
 let fileIndex = -1;
 let filemode = false;
 let inputMode = false;
-let inputVal = "";
+let inputValue = "";
 let inputEnd = null;
 let vars = {};
 let functions = {};
@@ -98,7 +98,7 @@ window.addEventListener("keydown", (e) => {
 function send(){
 
 if (inputMode){
-    vars[inputVal] = msg;
+    vars[inputValue] = msg;
     inputMode = false;
 
     if (inputEnd){
@@ -113,13 +113,13 @@ if (inputMode){
 if (filemode){
 
     if (msg === "save"){
-        files[currentFile] = file;
+        files[current] = file;
         localStorage.setItem("files", JSON.stringify(files));
         filemode = false;
         fileIndex = -1;
         textarea.innerText = "";
-        say(currentFile + " saved.");
-        currentFile = "";
+        say(current + " saved.");
+        current = "";
         msg = "";
         return;
     }
@@ -177,22 +177,16 @@ function runCommand(command, split){
             type(" - input [var]");
             type(" - function [name]")
             type(" - endfunction");
-            type(" - add [var1] [var2] [resultVar]");
-            type(" - subtract [var1] [var2] [reusltVar]");
-            type(" - multiply [var1] [var2] [reusltVar]");
-            type(" - divide [var1] [var2] [reusltVar]");
+            type(" - add [var1] [var2] [outputVar]");
+            type(" - subtract [var1] [var2] [outputVar]");
+            type(" - multiply [var1] [var2] [outputVar]");
+            type(" - divide [var1] [var2] [outputVar]");
             prev = 0;
         }else{
             locked = true;
             type("Available commands:");
             type(" - clear");
             type(" - history");
-            type(" - add [numbers]");
-            type(" - subtract [num1] [num2]");
-            type(" - multiply [numbers]");
-            type(" - divide [num1] [num2]");
-            type(" - avg [numbers]");
-            type(" - median [numbers]");
             type(" - touch [filename]");
             type(" - nano [filename]");
             type(" - rm [filename]");
@@ -204,112 +198,26 @@ function runCommand(command, split){
             type("For help on FScript run 'help fscript'.");
             prev = 0;
         }
-    }
-    else if (command === "clear"){
-        textarea.innerText = "";
-    }
-    else if (command === "add"){
-        let numbers = [];
-        for (let i = 1; i < split.length; i++) {
-            numbers.push(parseFloat(split[i]));
-        }
-
-        let sum = 0;
-        for (let i = 0; i < numbers.length; i++){
-            sum += numbers[i];
-        }
-        if (!isNaN(sum)){
-            say("Result: " + sum);
-        } else {
-            say("Invalid numbers provided");
-        }
-    }
-    else if (command === "subtract"){
-        let num1 = parseFloat(split[1]);
-        let num2 = parseFloat(split[2]);
-
-        if (!isNaN(num1) && !isNaN(num2)){
-            say("Result: " + (num1 - num2));
-        } else {
-            say("Invalid numbers provided");
-        }
-    }
-    else if (command === "multiply"){
-        let numbers = [];
-        for (let i = 1; i < split.length; i++) {
-            numbers.push(parseFloat(split[i]));
-        }
-
-        let product = 1;
-
-        for (let i = 0; i < numbers.length; i++){
-            product *= numbers[i];
-        }
-
-        if (isNaN(product)){
-            say("Invalid numbers provided");
-        } else {
-             say("Result: " + product);
-    }
-    }
-    else if (command === "divide"){
-        let num1 = parseFloat(split[1]);
-        let num2 = parseFloat(split[2]);
-
-        if (!isNaN(num1) && !isNaN(num2) && num2 !== 0){
-            say("Result: " + (num1 / num2));
-        } else {
-            say("Invalid numbers provided");
-        }
-    }
-    else if (command === "avg"){
-        let numbers = [];
-        for (let i = 1; i < split.length; i++) {
-            numbers.push(parseFloat(split[i]));
-        }
-
-        let sum = 0;
-
-        for (let i = 0; i < numbers.length; i++){
-            sum += numbers[i];
-        }
-
-        let average = sum / numbers.length;
-
-        if (isNaN(average)){
-            say("Invalid numbers provided");
-        } else {
-            say("Result: " + average);
-        }
-    }else if (command === "median"){
-        let numbers = [];
-        for (let i = 1; i < split.length; i++) {
-            numbers.push(parseFloat(split[i]));
-        }
-
-        for (let j = 0; j < numbers.length; j++){
-            for (let i = 0; i < numbers.length - 1; i++){
-                if (numbers[i] > numbers[i + 1]){
-                    let temp = numbers[i];
-                    numbers[i] = numbers[i + 1];
-                    numbers[i + 1] = temp;
-                }
-            }
-        }
-        let median;
-
-        if (numbers.length % 2 === 0){
-            median = (numbers[numbers.length/2 - 1] + numbers[numbers.length/2]) / 2;
-        } else {
-            median = numbers[Math.floor(numbers.length/2)];
-        }
-        if (isNaN(median)){
-            say("Invalid numbers provided");
-        } else {
-            say("Result: "+median);
-        }
+        } else if (command === "clear"){
+            textarea.innerText = "";
         } else if (command === "history"){
             say(history.join(", "));
+        } else if (command === "calc"){
+
+            const expression = split.slice(1).join(" ");
+
+            if (!expression){
+                say("Usage: calc [expression]");
+                return;
+            }
+
+            try{
+                const result = Function("return (" + expression + ")")();
+                say(String(result));
+            }catch{
+                say("Invalid expression.");
+            }
+
         } else if (command === "touch"){
         const name = split[1];
         if (!name){
@@ -331,7 +239,7 @@ function runCommand(command, split){
             return;
         }
 
-        currentFile = name;
+        current = name;
         file = files[name];
         filemode = true;
         fileIndex = file.length - 1;
@@ -509,6 +417,9 @@ function FScript(lines){
             if (op === ">") condition = left > right;
             if (op === "<") condition = left < right;
             if (op === "==") condition = left == right;
+            if (op === ">=") condition = left >= right;
+            if (op === "<=") condition = left <= right;
+            if (op === "!=") condition = left != right;
 
             if (!condition){
                 while (lines[i].trim() !== "endif"){
@@ -533,10 +444,64 @@ function FScript(lines){
             } else {
                 vars.loops.pop();
             }
+        } else if (command === "while"){
+
+            let left = process(split[1], vars);
+            let op = split[2];
+            let right = process(split[3], vars);
+
+            let condition = false;
+
+            if (op === ">") condition = left > right;
+            if (op === "<") condition = left < right;
+            if (op === "==") condition = left == right;
+            if (op === ">=") condition = left >= right;
+            if (op === "<=") condition = left <= right;
+            if (op === "!=") condition = left != right;
+
+            if (!vars.whiles) vars.whiles = [];
+
+            if (condition){
+                vars.whiles.push({
+                    start: i
+                });
+            } else {
+                while (lines[i].trim() !== "endwhile"){
+                    i++;
+                }
+            }
+
+        } else if (command === "endwhile"){
+
+            let loop = vars.whiles[vars.whiles.length - 1];
+
+            if (loop){
+                i = loop.start - 1;
+                vars.whiles.pop();
+            }
+
+        } else if (command === "wait"){
+
+            let time = process(split[1], vars);
+
+            setTimeout(() => {
+                FScript(lines.slice(i + 1));
+            }, time);
+
+            return;
+
+        } else if (command === "random"){
+
+            let min = process(split[1], vars);
+            let max = process(split[2], vars);
+            let out = split[3];
+
+            vars[out] = Math.floor(Math.random() * (max - min + 1)) + min;
+
         } else if (command === "input"){
             let name = split[1];
             inputMode = true;
-            inputVal = name;
+            inputValue = name;
             inputEnd = () => {
                 FScript(lines.slice(i + 1));
             };
@@ -544,14 +509,29 @@ function FScript(lines){
             return;
         } else if (command === "function") {
             let functionName = split[1];
-            functions[functionName] = [];
+            let params = split.slice(2);
+
+            functions[functionName] = {
+                params: params,
+                body: []
+            };
+
             i++;
             while (lines[i].trim() !== "endfunction") {
-                functions[functionName].push(lines[i]);
+                functions[functionName].body.push(lines[i]);
                 i++;
             }
         }else if (functions[command]){
-            FScript(functions[command]);
+
+            let func = functions[command];
+            let localVars = {...vars};
+
+            for (let j = 0; j < func.params.length; j++){
+                localVars[func.params[j]] = process(split[j + 1], vars);
+            }
+
+            FScript(func.body);
+
         }else if (command === "set"){
             vars[split[1]] = process(split[2], vars);
         }else if (command === "subtract"){
