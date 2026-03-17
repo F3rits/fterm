@@ -345,307 +345,175 @@ function writeFile(){
 }
 
 
-function FScript(lines, scope = {...vars}){
-
+function FScript(lines, scope = {...vars}) {
     let i = 0;
 
-    while (i < lines.length){
+    const loopStack = [];
+    const forStack = [];
 
+    while (i < lines.length) {
         let line = lines[i].trim();
-        if (line === ""){
-            i++;
-            continue;
-        }
+        if (!line) { i++; continue; }
 
         let split = line.split(" ");
         let command = split[0];
 
-        if (command === "var"){
+        if (command === "var" || command === "set") {
             scope[split[1]] = process(split.slice(2).join(" "), scope);
         }
 
-        else if (command === "set"){
-            scope[split[1]] = process(split.slice(2).join(" "), scope);
-        }
-
-        else if (command === "array"){
-            let name = split[1];
+        else if (command === "array") {
+            const name = split[1];
             arrays[name] = [];
             i++;
-
-            while (lines[i].trim() !== "endarray"){
+            while (lines[i].trim() !== "endarray") {
                 arrays[name].push(process(lines[i].trim(), scope));
                 i++;
             }
-        }
-
-        else if (command === "push"){
-            let name = split[1];
-            let val = process(split[2], scope);
-
+        } else if (command === "push") {
+            const name = split[1];
+            const val = process(split[2], scope);
             if (arrays[name]) arrays[name].push(val);
-        }
-
-        else if (command === "get"){
-            let name = split[1];
-            let index = process(split[2], scope);
-            let result = split[3];
-
-            if (arrays[name]) scope[result] = arrays[name][index];
-        }
-
-        else if (command === "setitem"){
-            let name = split[1];
-            let index = process(split[2], scope);
-            let val = process(split[3], scope);
-
+        } else if (command === "get") {
+            const name = split[1];
+            const index = process(split[2], scope);
+            const out = split[3];
+            if (arrays[name]) scope[out] = arrays[name][index];
+        } else if (command === "setitem") {
+            const name = split[1];
+            const index = process(split[2], scope);
+            const val = process(split[3], scope);
             if (arrays[name]) arrays[name][index] = val;
+        } else if (command === "length") {
+            const name = split[1];
+            const out = split[2];
+            if (arrays[name]) scope[out] = arrays[name].length;
         }
 
-        else if (command === "length"){
-            let name = split[1];
-            let result = split[2];
-
-            if (arrays[name]) scope[result] = arrays[name].length;
-        }
-
-        else if (command === "object"){
+        else if (command === "object") {
             objects[split[1]] = {};
-        }
-
-        else if (command === "setprop"){
-            let obj = split[1];
-            let key = split[2];
-            let val = process(split[3], scope);
-
+        } else if (command === "setprop") {
+            const obj = split[1];
+            const key = split[2];
+            const val = process(split[3], scope);
             if (objects[obj]) objects[obj][key] = val;
         }
 
-        else if (command === "print"){
-            let text = "";
-
-            for (let j=1;j<split.length;j++){
-                text += process(split[j], scope) + " ";
-            }
-
-            textarea.innerText += "\n" + text.trim();
+        else if (command === "print") {
+            const text = split.slice(1).map(v => process(v, scope)).join(" ");
+            textarea.innerText += "\n" + text;
         }
 
-        else if (command === "add"){
-            scope[split[3]] =
-                process(split[1], scope) +
-                process(split[2], scope);
+        else if (["add", "subtract", "multiply", "divide"].includes(command)) {
+            const a = process(split[1], scope);
+            const b = process(split[2], scope);
+            const out = split[3];
+            if (command === "add") scope[out] = a + b;
+            if (command === "subtract") scope[out] = a - b;
+            if (command === "multiply") scope[out] = a * b;
+            if (command === "divide") scope[out] = a / b;
         }
 
-        else if (command === "subtract"){
-            scope[split[3]] =
-                process(split[1], scope) -
-                process(split[2], scope);
-        }
+        else if (command === "if") {
+            const left = process(split[1], scope);
+            const op = split[2];
+            const right = process(split[3], scope);
+            let cond = false;
+            if (op === ">") cond = left > right;
+            if (op === "<") cond = left < right;
+            if (op === "==") cond = left == right;
+            if (op === "!=") cond = left != right;
+            if (op === ">=") cond = left >= right;
+            if (op === "<=") cond = left <= right;
 
-        else if (command === "multiply"){
-            scope[split[3]] =
-                process(split[1], scope) *
-                process(split[2], scope);
-        }
-
-        else if (command === "divide"){
-            scope[split[3]] =
-                process(split[1], scope) /
-                process(split[2], scope);
-        }
-
-        else if (command === "if"){
-
-            let left = process(split[1], scope);
-            let op = split[2];
-            let right = process(split[3], scope);
-
-            let condition = false;
-
-            if (op===">") condition=left>right;
-            if (op==="<") condition=left<right;
-            if (op==="==") condition=left==right;
-            if (op==="!=") condition=left!=right;
-            if (op===">=") condition=left>=right;
-            if (op==="<=") condition=left<=right;
-
-            if (!condition){
-                while(lines[i].trim()!=="endif") i++;
+            if (!cond) {
+                while (i < lines.length && lines[i].trim() !== "endif") i++;
             }
         }
 
-        else if (command === "loop"){
-
-            let count = process(split[1], scope);
-
-            if (!scope.loops) scope.loops=[];
-
-            scope.loops.push({
-                start:i+1,
-                remaining:count
-            });
-        }
-
-        else if (command === "endloop"){
-
-            let loop=scope.loops[scope.loops.length-1];
-
+        else if (command === "loop") {
+            const count = process(split[1], scope);
+            loopStack.push({start: i + 1, remaining: count});
+        } else if (command === "endloop") {
+            const loop = loopStack[loopStack.length - 1];
             loop.remaining--;
-
-            if (loop.remaining>0){
-                i=loop.start-1;
-            }else{
-                scope.loops.pop();
-            }
+            if (loop.remaining > 0) i = loop.start - 1;
+            else loopStack.pop();
         }
 
-        else if (command === "for"){
-
-            let name = split[1];
-            let start = process(split[2], scope);
-            let end = process(split[3], scope);
-
-            if (!scope.fors) scope.fors=[];
-
-            scope[name]=start;
-
-            scope.fors.push({
-                var:name,
-                end:end,
-                startLine:i
-            });
-        }
-
-        else if (command === "endfor"){
-
-            let loop=scope.fors[scope.fors.length-1];
-
+        else if (command === "for") {
+            const name = split[1];
+            const start = process(split[2], scope);
+            const end = process(split[3], scope);
+            scope[name] = start;
+            forStack.push({var: name, end, startLine: i});
+        } else if (command === "endfor") {
+            const loop = forStack[forStack.length - 1];
             scope[loop.var]++;
-
-            if (scope[loop.var] <= loop.end){
-                i = loop.startLine;
-            }else{
-                scope.fors.pop();
-            }
+            if (scope[loop.var] <= loop.end) i = loop.startLine;
+            else forStack.pop();
         }
 
-        else if (command === "break"){
-
-            while(lines[i] &&
-                 lines[i].trim()!=="endloop" &&
-                 lines[i].trim()!=="endfor"){
-                i++;
-            }
+        else if (command === "break") {
+            while (i < lines.length && !["endloop","endfor"].includes(lines[i].trim())) i++;
+        } else if (command === "continue") {
+            while (i < lines.length && !["endloop","endfor"].includes(lines[i].trim())) i++;
+            i--; 
         }
 
-        else if (command === "continue"){
-
-            while(lines[i] &&
-                 lines[i].trim()!=="endloop" &&
-                 lines[i].trim()!=="endfor"){
-                i++;
-            }
-            i--;
+        else if (command === "random") {
+            const min = process(split[1], scope);
+            const max = process(split[2], scope);
+            const out = split[3];
+            scope[out] = Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
-        else if (command === "random"){
-
-            let min=process(split[1], scope);
-            let max=process(split[2], scope);
-            let out=split[3];
-
-            scope[out]=Math.floor(Math.random()*(max-min+1))+min;
-        }
-
-        else if (command === "wait"){
-
-            let time = process(split[1], scope);
-
-            setTimeout(()=>{
-                FScript(lines.slice(i+1), scope);
-            },time);
-
+        else if (command === "wait") {
+            const time = process(split[1], scope);
+            setTimeout(() => FScript(lines.slice(i + 1), scope), time);
             return;
         }
 
-        else if (command === "input"){
-
-            let name = split[1];
-
-            inputMode=true;
-            inputValue=name;
-
-            inputEnd=()=>{
-                FScript(lines.slice(i+1), scope);
-            };
-
+        else if (command === "input") {
+            const name = split[1];
+            inputMode = true;
+            inputValue = name;
+            inputEnd = () => FScript(lines.slice(i + 1), scope);
             return;
         }
 
-        else if (command === "function"){
-
-            let name=split[1];
-            let params=split.slice(2);
-
-            functions[name]={params:params,body:[]};
-
+        else if (command === "function") {
+            const name = split[1];
+            const params = split.slice(2);
+            functions[name] = {params, body: []};
             i++;
-
-            while(lines[i].trim()!=="endfunction"){
+            while (i < lines.length && lines[i].trim() !== "endfunction") {
                 functions[name].body.push(lines[i]);
                 i++;
             }
+        } else if (command === "return") {
+            const value = process(split[1], scope);
+            return {return: value};
+        } else if (functions[command]) {
+            const func = functions[command];
+            const localScope = {...scope};
+            func.params.forEach((p, idx) => localScope[p] = process(split[idx+1], scope));
+            const result = FScript(func.body, localScope);
+            const outVar = split[func.params.length + 1];
+            if (outVar && result?.return !== undefined) scope[outVar] = result.return;
         }
 
-        else if (command === "return"){
-
-            let value = process(split[1], scope);
-            return {return:value};
+        else if (command === "writefile") {
+            const name = split[1];
+            const text = split.slice(2).map(v => process(v, scope)).join(" ");
+            files[name] = [text];
+        } else if (command === "readfile") {
+            const name = split[1];
+            const out = split[2];
+            if (files[name]) scope[out] = files[name].join("\n");
         }
 
-        else if (functions[command]){
-
-            let func = functions[command];
-            let local = {...scope};
-
-            for (let j=0;j<func.params.length;j++){
-                local[func.params[j]] =
-                    process(split[j+1], scope);
-            }
-
-            let result = FScript(func.body, local);
-
-            let outVar = split[func.params.length+1];
-
-            if (outVar){
-                scope[outVar] = result?.return;
-            }
-        }
-        
-        else if (command === "writefile"){
-
-            let name=split[1];
-            let text=split.slice(2)
-                .map(v=>process(v,scope))
-                .join(" ");
-
-            files[name]=[text];
-        }
-
-        else if (command === "readfile"){
-
-            let name=split[1];
-            let out=split[2];
-
-            if (files[name]){
-                scope[out]=files[name].join("\n");
-            }
-        }
-
-        else{
-            runCommand(command, split);
-        }
+        else runCommand(command, split);
 
         i++;
     }
@@ -653,21 +521,20 @@ function FScript(lines, scope = {...vars}){
     return scope;
 }
 
-function process(v, scope){
-
+function process(v, scope) {
     if (typeof v !== "string") return v;
 
-    if (v.startsWith("$")){
-        let name = v.slice(1);
+    if (v.startsWith("$")) {
+        const name = v.slice(1);
 
-        if (name.includes(".")){
-            let [obj,key] = name.split(".");
-            if (objects[obj]) return objects[obj][key];
+        if (name.includes(".")) {
+            const [obj, key] = name.split(".");
+            if (objects[obj] && objects[obj][key] !== undefined) return objects[obj][key];
         }
 
-        if (name.includes("[")){
-            let arrName = name.split("[")[0];
-            let index = process(name.split("[")[1].replace("]",""), scope);
+        if (name.includes("[")) {
+            const arrName = name.split("[")[0];
+            const index = process(name.split("[")[1].replace("]", ""), scope);
             if (arrays[arrName]) return arrays[arrName][index];
         }
 
