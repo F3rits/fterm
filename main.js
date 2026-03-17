@@ -674,6 +674,7 @@ function process(v, scope){
 
     if (!isNaN(parseFloat(v))) return parseFloat(v);
 
+    if (/^[a-zA-Z_]+$/.test(v)) return v;
     return evaluateExpression(v, scope);
 }
 
