@@ -654,7 +654,10 @@ function FScript(lines, scope = {...vars}){
 }
 
 function process(v, scope){
-    if (typeof v === "string" && v.startsWith("$")){
+
+    if (typeof v !== "string") return v;
+
+    if (v.startsWith("$")){
         let name = v.slice(1);
 
         if (name.includes(".")){
@@ -674,8 +677,7 @@ function process(v, scope){
 
     if (!isNaN(parseFloat(v))) return parseFloat(v);
 
-    if (/^[a-zA-Z_]+$/.test(v)) return v;
-    return evaluateExpression(v, scope);
+    return v;
 }
 
 function evaluateExpression(expr, scope){
