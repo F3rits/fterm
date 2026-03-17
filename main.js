@@ -16,6 +16,9 @@ let inputEnd = null;
 let vars = {};
 let functions = {};
 let arrays = {};
+let objects = {};
+let callStack = [];
+let modules = {};
 
 const saved = localStorage.getItem("files");
 
@@ -157,45 +160,42 @@ if (filemode){
 }
 
 function runCommand(command, split){
-    if (command === "help"){
-        if (split[1] === "fscript"){
-            locked = true;
-            type("FScript is a simple programming language for FTerm.");
-            type("Commands:");
-            type(" - var [name] [value] (variables must be called using the $ prefix)");
-            type(" - array [name]");
-            type(" - endarray");
-            type(" - get [array] [index] [var]");
-            type(" - setitem [array] [index] [val]");
-            type(" - length [array] [var]")
-            type(" - set [var]");
-            type(" - print [text/var]");
-            type(" - if [var1] [operator] [var2] (>, <, ==)");
-            type(" - endif");
-            type(" - loop [count]");
-            type(" - endloop");
-            type(" - input [var]");
-            type(" - function [name]")
-            type(" - endfunction");
-            type(" - add [var1] [var2] [outputVar]");
-            type(" - subtract [var1] [var2] [outputVar]");
-            type(" - multiply [var1] [var2] [outputVar]");
-            type(" - divide [var1] [var2] [outputVar]");
+    if (command === "help") {
+        locked = true;
+
+        if (split[1] === "fscript") {
+            type("FScript commands:");
+            type("var [name] [value]");
+            type("set [var]");
+            type("array [name] ... endarray");
+            type("get [array] [index] [var]");
+            type("setitem [array] [index] [val]");
+            type("length [array] [var]");
+            type("object [name]");
+            type("setprop [obj] [key] [val]");
+            type("add [v1] [v2] [out]");
+            type("subtract [v1] [v2] [out]");
+            type("multiply [v1] [v2] [out]");
+            type("divide [v1] [v2] [out]");
+            type("random [min] [max] [out]");
+            type("if [v1] [op] [v2] ... endif");
+            type("loop [count] ... endloop");
+            type("for [var] [start] [end] ... endfor");
+            type("break / continue");
+            type("input [var]");
+            type("print [text/var]");
+            type("type [text]");
+            type("function [name] [params] ... endfunction");
+            type("return [value]");
             prev = 0;
-        }else{
-            locked = true;
-            type("Available commands:");
-            type(" - clear");
-            type(" - history");
-            type(" - touch [filename]");
-            type(" - nano [filename]");
-            type(" - rm [filename]");
-            type(" - ls");
-            type(" - cat [filename]");
-            type(" - say [message]");
-            type(" - type [message]");
-            type(" - run [filename]");
-            type("For help on FScript run 'help fscript'.");
+        } else {
+            type("FTerm commands:");
+            type("clear / history / ls");
+            type("touch [filename] / nano [filename] / rm [filename]");
+            type("cat [filename]");
+            type("say [message] / type [message]");
+            type("run [filename]");
+            type("For FScript help: help fscript");
             prev = 0;
         }
         } else if (command === "clear"){
@@ -343,10 +343,12 @@ function writeFile(){
 }
 
 
-function FScript(lines){
+function FScript(lines, scope = {...vars}){
+
     let i = 0;
 
     while (i < lines.length){
+
         let line = lines[i].trim();
         if (line === ""){
             i++;
@@ -357,217 +359,331 @@ function FScript(lines){
         let command = split[0];
 
         if (command === "var"){
-            vars[split[1]] = process(split[2], vars);
-        }else if (command === "array"){
+            scope[split[1]] = process(split.slice(2).join(" "), scope);
+        }
+
+        else if (command === "set"){
+            scope[split[1]] = process(split.slice(2).join(" "), scope);
+        }
+
+        else if (command === "array"){
             let name = split[1];
             arrays[name] = [];
             i++;
-            while (lines[i].trim() !== "endarray") {
-                let val = process(lines[i].trim(), vars);
-                arrays[name].push(val);
+
+            while (lines[i].trim() !== "endarray"){
+                arrays[name].push(process(lines[i].trim(), scope));
                 i++;
             }
-        } else if (command === "push"){
-            let name = split[1];
-            let val = process(split[2], vars);
+        }
 
-            if (arrays[name]){
-                arrays[name].push(val);
-            }
-        } else if (command === "get"){
+        else if (command === "push"){
             let name = split[1];
-            let index = process(split[2], vars);
+            let val = process(split[2], scope);
+
+            if (arrays[name]) arrays[name].push(val);
+        }
+
+        else if (command === "get"){
+            let name = split[1];
+            let index = process(split[2], scope);
             let result = split[3];
 
-            if (arrays[name]){
-                vars[result] = arrays[name][index];
-            }
-        } else if (command === "setitem"){
-            let name = split[1];
-            let index = process(split[2], vars);
-            let val = process(split[3], vars);
+            if (arrays[name]) scope[result] = arrays[name][index];
+        }
 
-            if (arrays[name]){
-                arrays[name][index] = val;
-            }
-        } else if (command === "length"){
+        else if (command === "setitem"){
+            let name = split[1];
+            let index = process(split[2], scope);
+            let val = process(split[3], scope);
+
+            if (arrays[name]) arrays[name][index] = val;
+        }
+
+        else if (command === "length"){
             let name = split[1];
             let result = split[2];
 
-            if (arrays[name]){
-                vars[result] = arrays[name].length;
-            }
-        } else if (command === "print"){
-            let text = "";
-            for (let i = 1; i < split.length; i++) {
-                text += process(split[i], vars) + " ";
-            }
-            text = text.trim();
-            textarea.innerText += "\n" + text;
-        } else if (command === "add"){
-            vars[split[3]] = process(split[1], vars) +  process(split[2], vars);
-        } else if (command === "if"){
+            if (arrays[name]) scope[result] = arrays[name].length;
+        }
 
-            let left = process(split[1], vars);
+        else if (command === "object"){
+            objects[split[1]] = {};
+        }
+
+        else if (command === "setprop"){
+            let obj = split[1];
+            let key = split[2];
+            let val = process(split[3], scope);
+
+            if (objects[obj]) objects[obj][key] = val;
+        }
+
+        else if (command === "print"){
+            let text = "";
+
+            for (let j=1;j<split.length;j++){
+                text += process(split[j], scope) + " ";
+            }
+
+            textarea.innerText += "\n" + text.trim();
+        }
+
+        else if (command === "add"){
+            scope[split[3]] =
+                process(split[1], scope) +
+                process(split[2], scope);
+        }
+
+        else if (command === "subtract"){
+            scope[split[3]] =
+                process(split[1], scope) -
+                process(split[2], scope);
+        }
+
+        else if (command === "multiply"){
+            scope[split[3]] =
+                process(split[1], scope) *
+                process(split[2], scope);
+        }
+
+        else if (command === "divide"){
+            scope[split[3]] =
+                process(split[1], scope) /
+                process(split[2], scope);
+        }
+
+        else if (command === "if"){
+
+            let left = process(split[1], scope);
             let op = split[2];
-            let right = process(split[3], vars);
+            let right = process(split[3], scope);
 
             let condition = false;
 
-            if (op === ">") condition = left > right;
-            if (op === "<") condition = left < right;
-            if (op === "==") condition = left == right;
-            if (op === ">=") condition = left >= right;
-            if (op === "<=") condition = left <= right;
-            if (op === "!=") condition = left != right;
+            if (op===">") condition=left>right;
+            if (op==="<") condition=left<right;
+            if (op==="==") condition=left==right;
+            if (op==="!=") condition=left!=right;
+            if (op===">=") condition=left>=right;
+            if (op==="<=") condition=left<=right;
 
             if (!condition){
-                while (lines[i].trim() !== "endif"){
-                    i++;
-                }
+                while(lines[i].trim()!=="endif") i++;
             }
-        }else if (command === "loop"){
-            let count = process(split[1], vars);
-            if (!vars.loops) vars.loops = [];
-            vars.loops.push({
-                start: i + 1,
-                remaining: count
+        }
+
+        else if (command === "loop"){
+
+            let count = process(split[1], scope);
+
+            if (!scope.loops) scope.loops=[];
+
+            scope.loops.push({
+                start:i+1,
+                remaining:count
             });
         }
+
         else if (command === "endloop"){
-            let loop = vars.loops[vars.loops.length - 1];
+
+            let loop=scope.loops[scope.loops.length-1];
 
             loop.remaining--;
 
-            if (loop.remaining > 0){
-                i = loop.start - 1;
-            } else {
-                vars.loops.pop();
+            if (loop.remaining>0){
+                i=loop.start-1;
+            }else{
+                scope.loops.pop();
             }
-        } else if (command === "while"){
+        }
 
-            let left = process(split[1], vars);
-            let op = split[2];
-            let right = process(split[3], vars);
+        else if (command === "for"){
 
-            let condition = false;
-
-            if (op === ">") condition = left > right;
-            if (op === "<") condition = left < right;
-            if (op === "==") condition = left == right;
-            if (op === ">=") condition = left >= right;
-            if (op === "<=") condition = left <= right;
-            if (op === "!=") condition = left != right;
-
-            if (!vars.whiles) vars.whiles = [];
-
-            if (condition){
-                vars.whiles.push({
-                    start: i
-                });
-            } else {
-                while (lines[i].trim() !== "endwhile"){
-                    i++;
-                }
-            }
-
-        } else if (command === "endwhile"){
-
-            let loop = vars.whiles[vars.whiles.length - 1];
-
-            if (loop){
-                i = loop.start - 1;
-                vars.whiles.pop();
-            }
-
-        } else if (command === "wait"){
-
-            let time = process(split[1], vars);
-
-            setTimeout(() => {
-                FScript(lines.slice(i + 1));
-            }, time);
-
-            return;
-
-        } else if (command === "random"){
-
-            let min = process(split[1], vars);
-            let max = process(split[2], vars);
-            let out = split[3];
-
-            vars[out] = Math.floor(Math.random() * (max - min + 1)) + min;
-
-        } else if (command === "input"){
             let name = split[1];
-            inputMode = true;
-            inputValue = name;
-            inputEnd = () => {
-                FScript(lines.slice(i + 1));
-            };
+            let start = process(split[2], scope);
+            let end = process(split[3], scope);
 
-            return;
-        } else if (command === "function") {
-            let functionName = split[1];
-            let params = split.slice(2);
+            if (!scope.fors) scope.fors=[];
 
-            functions[functionName] = {
-                params: params,
-                body: []
-            };
+            scope[name]=start;
 
-            i++;
-            while (lines[i].trim() !== "endfunction") {
-                functions[functionName].body.push(lines[i]);
+            scope.fors.push({
+                var:name,
+                end:end,
+                startLine:i
+            });
+        }
+
+        else if (command === "endfor"){
+
+            let loop=scope.fors[scope.fors.length-1];
+
+            scope[loop.var]++;
+
+            if (scope[loop.var] <= loop.end){
+                i = loop.startLine;
+            }else{
+                scope.fors.pop();
+            }
+        }
+
+        else if (command === "break"){
+
+            while(lines[i] &&
+                 lines[i].trim()!=="endloop" &&
+                 lines[i].trim()!=="endfor"){
                 i++;
             }
-        }else if (functions[command]){
+        }
+
+        else if (command === "continue"){
+
+            while(lines[i] &&
+                 lines[i].trim()!=="endloop" &&
+                 lines[i].trim()!=="endfor"){
+                i++;
+            }
+            i--;
+        }
+
+        else if (command === "random"){
+
+            let min=process(split[1], scope);
+            let max=process(split[2], scope);
+            let out=split[3];
+
+            scope[out]=Math.floor(Math.random()*(max-min+1))+min;
+        }
+
+        else if (command === "wait"){
+
+            let time = process(split[1], scope);
+
+            setTimeout(()=>{
+                FScript(lines.slice(i+1), scope);
+            },time);
+
+            return;
+        }
+
+        else if (command === "input"){
+
+            let name = split[1];
+
+            inputMode=true;
+            inputValue=name;
+
+            inputEnd=()=>{
+                FScript(lines.slice(i+1), scope);
+            };
+
+            return;
+        }
+
+        else if (command === "function"){
+
+            let name=split[1];
+            let params=split.slice(2);
+
+            functions[name]={params:params,body:[]};
+
+            i++;
+
+            while(lines[i].trim()!=="endfunction"){
+                functions[name].body.push(lines[i]);
+                i++;
+            }
+        }
+
+        else if (command === "return"){
+
+            let value = process(split[1], scope);
+            return {return:value};
+        }
+
+        else if (functions[command]){
 
             let func = functions[command];
-            let localVars = {...vars};
+            let local = {...scope};
 
-            for (let j = 0; j < func.params.length; j++){
-                localVars[func.params[j]] = process(split[j + 1], vars);
+            for (let j=0;j<func.params.length;j++){
+                local[func.params[j]] =
+                    process(split[j+1], scope);
             }
 
-            FScript(func.body);
+            let result = FScript(func.body, local);
 
-        }else if (command === "set"){
-            vars[split[1]] = process(split[2], vars);
-        }else if (command === "subtract"){
-            vars[split[3]] = process(split[1], vars) - process(split[2], vars);
-        }else if (command === "multiply"){
-            vars[split[3]] = process(split[1], vars) * process(split[2], vars);
-        }else if (command === "divide"){
-            vars[split[3]] = process(split[1], vars) / process(split[2], vars);
-        }else if (command === "endif"){
+            let outVar = split[func.params.length+1];
 
-        }else {
+            if (outVar){
+                scope[outVar] = result?.return;
+            }
+        }
+
+        else if (command === "writefile"){
+
+            let name=split[1];
+            let text=split.slice(2)
+                .map(v=>process(v,scope))
+                .join(" ");
+
+            files[name]=[text];
+        }
+
+        else if (command === "readfile"){
+
+            let name=split[1];
+            let out=split[2];
+
+            if (files[name]){
+                scope[out]=files[name].join("\n");
+            }
+        }
+
+        else{
             runCommand(command, split);
         }
-     i++;
+
+        i++;
     }
+
+    return scope;
 }
 
-function process(v, vars){
+function process(v, scope){
     if (typeof v === "string" && v.startsWith("$")){
         let name = v.slice(1);
+
+        if (name.includes(".")){
+            let [obj,key] = name.split(".");
+            if (objects[obj]) return objects[obj][key];
+        }
+
         if (name.includes("[")){
             let arrName = name.split("[")[0];
-            let index = parseInt(name.split("[")[1].replace("]",""));
-            if (arrays[arrName]){
-                return arrays[arrName][index];
-            }
+            let index = process(name.split("[")[1].replace("]",""), scope);
+            if (arrays[arrName]) return arrays[arrName][index];
         }
-        if (vars[name] !== undefined){
-            return vars[name];
-        }
+
+        if (scope[name] !== undefined) return scope[name];
         return "";
     }
-    if (!isNaN(parseFloat(v))){
-        return parseFloat(v);
+
+    if (!isNaN(parseFloat(v))) return parseFloat(v);
+
+    return evaluateExpression(v, scope);
+}
+
+function evaluateExpression(expr, scope){
+    try{
+        return Function("vars","arrays","objects",
+        "with(vars){with(arrays){with(objects){return " + expr + "}}}")(
+            scope, arrays, objects
+        );
+    }catch{
+        return expr;
     }
-    return v;
 }
 
 type ("Hello,");
