@@ -187,6 +187,8 @@ function runCommand(command, split){
             type("type [text]");
             type("function [name] [params] ... endfunction");
             type("return [value]");
+            type("writefile [file] [text]");
+            type("readfile [file] [var]");
             prev = 0;
         } else {
             type("FTerm commands:");
@@ -620,7 +622,7 @@ function FScript(lines, scope = {...vars}){
                 scope[outVar] = result?.return;
             }
         }
-
+        
         else if (command === "writefile"){
 
             let name=split[1];
